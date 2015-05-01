@@ -1,0 +1,221 @@
+<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="proot-website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-space implementation of chroot, mount --bind,&#10;and binfmt_misc.  This means that users don't need any privileges&#10;or setup to do things like using an arbitrary directory as the new&#10;root filesystem, making files accessible somewhere else in the&#10;filesystem hierarchy, or executing programs built for another CPU&#10;architecture transparently through QEMU user-mode.  Also, developers&#10;can use PRoot as a generic Linux process instrumentation engine thanks&#10;to its extension mechanism, see CARE for an example.  Technically&#10;PRoot relies on ptrace, an unprivileged system-call available in&#10;every Linux kernel."/><script type="text/javascript">
+	  var _gaq = _gaq || [];
+	  _gaq.push(['_setAccount', 'UA-20176046-1']);
+	  _gaq.push(['_trackPageview']);
+	  (function() {
+	  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+	  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+	  })();
+	</script></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small"><!--By default XSLTproc converts tags with no
+	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#examples">Examples</a></li><li><a href="#downloads">Downloads</a></li><li><a href="#ecosystem">Ecosystem</a></li><li><a href="#support">Support</a></li><li><a href="https://plus.google.com/107605112469213359575/posts">News+</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-space implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
+and <tt>binfmt_misc</tt>.  This means that users don't need any privileges
+or setup to do things like using an arbitrary directory as the new
+root filesystem, making files accessible somewhere else in the
+filesystem hierarchy, or executing programs built for another CPU
+architecture transparently through QEMU user-mode.  Also, developers
+can use PRoot as a generic Linux process instrumentation engine thanks
+to its extension mechanism, see <a href="http://reproducible.io">CARE</a> for an example.  Technically
+PRoot relies on <tt>ptrace</tt>, an unprivileged system-call available in
+every Linux kernel.</p><p>The new root file-system, a.k.a <em>guest rootfs</em>, typically contains a
+Linux distribution.  By default PRoot confines the execution of
+programs to the guest rootfs only, however users can use the built-in
+<em>mount/bind</em> mechanism to access files and directories from the actual
+root file-system, a.k.a <em>host rootfs</em>, just as if they were part of
+the guest rootfs.</p><p>When the guest Linux distribution is made for a CPU architecture
+incompatible with the host one, PRoot uses the CPU emulator QEMU
+user-mode to execute transparently guest programs.  It's a convenient
+way to develop, to build, and to validate any guest Linux packages
+seamlessly on users' computer, just as if they were in a <em>native</em>
+guest environment.  That way all of the cross-compilation issues are
+avoided.</p><p>PRoot can also <em>mix</em> the execution of host programs and the execution
+of guest programs emulated by QEMU user-mode.  This is useful to use
+host equivalents of programs that are missing from the guest rootfs
+and to speed up build-time by using cross-compilation tools or
+CPU-independent programs, like interpreters.</p><p>It is worth noting that the guest kernel is never involved, regardless
+of whether QEMU user-mode is used or not.  Technically, when guest
+programs perform access to system resources, PRoot translates their
+requests before sending them to the host kernel.  This means that
+guest programs can use host resources (devices, network, ...) just as
+if they were "normal" host programs.</p></div><div xmlns="" class="section" id="examples"><h2>Examples</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
+<tt>/mnt/armslack-12.2/</tt> contain a Linux distribution respectively made
+for x86 CPUs and ARM CPUs.</p><div class="section" id="chroot\ equivalent"><h3><tt>chroot</tt> equivalent</h3><p>To execute a command inside a given Linux distribution, just give
+<tt>proot</tt> the path to the guest rootfs followed by the desired
+command.  The example below executes the program <tt>cat</tt> to print the
+content of a file:</p><pre>proot -r /mnt/slackware-8.0/ cat /etc/motd
+
+Welcome to Slackware Linux 8.0</pre><p>The default command is <tt>/bin/sh</tt> when none is specified. Thus the
+shortest way to confine an interactive shell and all its sub-programs
+is:</p><pre>proot -r /mnt/slackware-8.0/
+
+$ cat /etc/motd
+Welcome to Slackware Linux 8.0</pre></div><div class="section" id="mount\ --bind\ equivalent"><h3><tt>mount --bind</tt> equivalent</h3><p>The bind mechanism enables one to relocate files and directories.  This is
+typically useful to trick programs that perform access to hard-coded
+locations, like some installation scripts:</p><pre>proot -b /tmp/alternate_opt:/opt
+
+$ cd to/sources
+$ make install
+[...]
+install -m 755 prog "/opt/bin"
+[...] # prog is installed in "/tmp/alternate_opt/bin" actually</pre><p>As shown in this example, it is possible to bind over files not even
+owned by the user.  This can be used to <em>overlay</em> system configuration
+files, for instance the DNS setting:</p><pre>ls -l /etc/hosts
+-rw-r--r-- 1 root root 675 Mar  4  2011 /etc/hosts</pre><pre>proot -b ~/alternate_hosts:/etc/hosts
+
+$ echo '1.2.3.4 google.com' &gt; /etc/hosts
+$ resolveip google.com
+IP address of google.com is 1.2.3.4
+$ echo '5.6.7.8 google.com' &gt; /etc/hosts
+$ resolveip google.com
+IP address of google.com is 5.6.7.8</pre><p>Another example: on most Linux distributions <tt>/bin/sh</tt> is a symbolic
+link to <tt>/bin/bash</tt>, whereas it points to <tt>/bin/dash</tt> on Debian
+and Ubuntu.  As a consequence a <tt>#!/bin/sh</tt> script tested with Bash
+might not work with Dash.  In this case, the binding mechanism of
+PRoot can be used to set non-disruptively <tt>/bin/bash</tt> as the default
+<tt>/bin/sh</tt> on these two Linux distributions:</p><pre>proot -b /bin/bash:/bin/sh [...]</pre><p>Because <tt>/bin/sh</tt> is initially a symbolic link to <tt>/bin/dash</tt>, the
+content of <tt>/bin/bash</tt> is actually bound over this latter:</p><pre>proot -b /bin/bash:/bin/sh
+
+$ md5sum /bin/sh
+089ed56cd74e63f461bef0fdfc2d159a  /bin/sh
+$ md5sum /bin/bash
+089ed56cd74e63f461bef0fdfc2d159a  /bin/bash
+$ md5sum /bin/dash
+089ed56cd74e63f461bef0fdfc2d159a  /bin/dash</pre><p>In most cases this shouldn't be a problem, but it is still possible to
+strictly bind <tt>/bin/bash</tt> over <tt>/bin/sh</tt> -- without dereferencing
+it -- by specifying the <tt>!</tt> character at the end:</p><pre>proot -b '/bin/bash:/bin/sh!'
+
+$ md5sum /bin/sh
+089ed56cd74e63f461bef0fdfc2d159a  /bin/sh
+$ md5sum /bin/bash
+089ed56cd74e63f461bef0fdfc2d159a  /bin/bash
+$ md5sum /bin/dash
+c229085928dc19e8d9bd29fe88268504  /bin/dash</pre></div><div class="section" id="chroot\ +\ mount\ --bind\ equivalent"><h3><tt>chroot</tt> + <tt>mount --bind</tt> equivalent</h3><p>The two features above can be combined to make any file from the host
+rootfs accessible in the confined environment just as if it were
+initially part of the guest rootfs.  It is sometimes required to run
+programs that rely on some specific files:</p><pre>proot -r /mnt/slackware-8.0/
+
+$ ps -o tty,command
+Error, do this: mount -t proc none /proc</pre><p>works better with:</p><pre>proot -r /mnt/slackware-8.0/ -b /proc
+
+$ ps -o tty,command
+TT       COMMAND
+?        bash
+?        proot -b /proc /mnt/slackware-8.0/
+?        sh
+?        ps -o tty,command</pre><p>Actually there's a bunch of such specific files, that's why PRoot
+provides the option <tt>-R</tt> to bind automatically a pre-defined list of
+recommended paths:</p><pre>proot -R /mnt/slackware-8.0/
+
+$ ps -o tty,command
+TT       COMMAND
+pts/6    bash
+pts/6    proot -R /mnt/slackware-8.0/
+pts/6    sh
+pts/6    ps -o tty,command</pre></div><div class="section" id="chroot\ +\ mount\ --bind\ +\ su\ equivalent"><h3><tt>chroot</tt> + <tt>mount --bind</tt> + <tt>su</tt> equivalent</h3><p>Some programs will not work correctly if they are not run by the
+"root" user, this is typically the case with package managers.  PRoot
+can fake the root identity and its privileges when the <tt>-0</tt> (zero)
+option is specified:</p><pre>proot -r /mnt/slackware-8.0/ -0
+
+# id
+uid=0(root) gid=0(root) [...]
+
+# mkdir /tmp/foo
+# chmod a-rwx /tmp/foo
+# echo 'I bypass file-system permissions.' &gt; /tmp/foo/bar
+# cat /tmp/foo/bar
+I bypass file-system permissions.</pre><p>This option is typically required to create or install packages into
+the guest rootfs.  Note it is <em>not</em> recommended to use the <tt>-R</tt>
+option when installing packages since they may try to update bound
+system files, like <tt>/etc/group</tt>.  Instead, it is recommended to use
+the <tt>-S</tt> option.  This latter enables the <tt>-0</tt> option and binds
+only paths that are known to not be updated by packages:</p><pre>proot -S /mnt/slackware-8.0/
+
+# installpkg perl.tgz
+Installing package perl...</pre></div><div class="section" id="chroot\ +\ mount\ --bind\ +\ binfmt_misc\ equivalent"><h3><tt>chroot</tt> + <tt>mount --bind</tt> + <tt>binfmt_misc</tt> equivalent</h3><p>PRoot uses QEMU user-mode to execute programs built for a CPU
+architecture incompatible with the host one.  From users'
+point-of-view, guest programs handled by QEMU user-mode are executed
+transparently, that is, just like host programs.  To enable this
+feature users just have to specify which instance of QEMU user-mode
+they want to use with the option <tt>-q</tt>:</p><pre>proot -R /mnt/armslack-12.2/ -q qemu-arm
+
+$ cat /etc/motd
+Welcome to ARMedSlack Linux 12.2</pre><p>The parameter of the <tt>-q</tt> option is actually a whole QEMU user-mode
+command, for instance to enable its GDB server on port 1234:</p><pre>proot -R /mnt/armslack-12.2/ -q "qemu-arm -g 1234" emacs</pre><p>PRoot allows one to mix transparently the emulated execution of guest
+programs and the native execution of host programs in the same
+file-system namespace.  It's typically useful to extend the list of
+available programs and to speed up build-time significantly.  This
+mixed-execution feature is enabled by default when using QEMU
+user-mode, and the content of the host rootfs is made accessible
+through <tt>/host-rootfs</tt>:</p><pre>proot -R /mnt/armslack-12.2/ -q qemu-arm
+
+$ file /bin/echo
+[...] ELF 32-bit LSB executable, ARM [...]
+$ /bin/echo 'Hello world!'
+Hello world!
+
+$ file /host-rootfs/bin/echo
+[...] ELF 64-bit LSB executable, x86-64 [...]
+$ /host-rootfs/bin/echo 'Hello mixed world!'
+Hello mixed world!</pre><p>Since both host and guest programs use the guest rootfs as <tt>/</tt>,
+users may want to deactivate explicitly cross-filesystem support found
+in most GNU cross-compilation tools.  For example with GCC configured
+to cross-compile to the ARM target:</p><pre>proot -R /mnt/armslack-12.2/ -q qemu-arm
+
+$ export CC=/host-rootfs/opt/cross-tools/arm-linux/bin/gcc
+$ export CFLAGS="--sysroot=/"   # could be optional indeed
+$ ./configure; make</pre><p>As with regular files, a host instance of a program can be bound over
+its guest instance.  Here is an example where the guest binary of
+<tt>make</tt> is overlaid by the host one:</p><pre>proot -R /mnt/armslack-12.2/ -q qemu-arm -b /usr/bin/make
+
+$ which make
+/usr/bin/make
+$ make --version # overlaid
+GNU Make 3.82
+Built for x86_64-slackware-linux-gnu</pre><p>It's worth mentioning that even when mixing the native execution of
+host programs and the emulated execution of guest programs, they still
+believe they are running in a native guest environment.  As a
+demonstration, here is a partial output of a typical <tt>./configure</tt>
+script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div xmlns="" class="section" id="downloads"><h2>Downloads</h2><div class="section" id=""><h3>PRoot</h3><p>The latest release of PRoot is packaged on <a href="http://packages.proot.me">http://packages.proot.me</a>
+and sources are hosted on <a href="http://github.proot.me">http://github.proot.me</a>.  It is also
+available as highly compatible static binaries:</p><ul><li><p>for x86_64: <a href="http://static.proot.me/proot-x86_64">http://static.proot.me/proot-x86_64</a></p></li><li><p>for x86: <a href="http://static.proot.me/proot-x86">http://static.proot.me/proot-x86</a></p></li><li><p>for ARM: <a href="http://static.proot.me/proot-arm">http://static.proot.me/proot-arm</a></p></li><li><p>other architectures: on demand.</p></li></ul></div><div class="section" id="rootfs"><h3>Rootfs</h3><p>Here follows a couple of URLs where some rootfs archives can be freely
+downloaded.  Note that <tt>mknod</tt> errors reported by <tt>tar</tt> when
+extracting these archives can be safely ignored since special files
+are typically bound (see <tt>-R</tt> option for details).</p><ul><li><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p><a href="https://images.linuxcontainers.org/images/">https://images.linuxcontainers.org/images/</a></p></li><li><p><a href="http://distfiles.gentoo.org/releases/">http://distfiles.gentoo.org/releases/</a></p></li><li><p><a href="http://cdimage.ubuntu.com/ubuntu-core/releases/">http://cdimage.ubuntu.com/ubuntu-core/releases/</a></p></li><li><p><a href="http://archlinuxarm.org/developers/downloads">http://archlinuxarm.org/developers/downloads</a></p></li></ul><p>Technically such rootfs archive can be created by running the
+following command on the expected Linux distribution:</p><pre>tar --one-file-system --create --gzip --file my_rootfs.tar.gz /</pre></div></div><div xmlns="" class="section" id="ecosystem"><h2>Ecosystem</h2><p>The following ecosystem has developed around PRoot since it has been
+made publicly available.</p><div class="section" id="projects\ using\ proot\ or\ care"><h3>Projects using PRoot or CARE</h3><ul><li><p><a href="http://reproducible.io">CARE</a>: archive material used during an execution to make it
+reproducible on any Linux system.</p></li><li><p><a href="https://play.google.com/store/apps/details?id=champion.gnuroot">GNURoot</a>:
+use several Linux distros on Android without root access.</p></li><li><p><a href="https://play.google.com/store/apps/details?id=com.cuntubuntu">Debian noroot</a>:
+use Debian Linux on Android without root access.</p></li><li><p><a href="https://github.com/polysquare/polysquare-travis-container">Polysquare Travis Container</a>:
+use several Linux distros on Travis-CI without root access.</p></li><li><p><a href="https://github.com/fsquillace/juju">JuJu</a>:
+use Arch Linux on any Linux distros without root access.</p></li><li><p><a href="https://github.com/ev3dev/brickstrap">Brickstrap</a>:
+create ev3dev file system images.</p></li><li><p><a href="https://github.com/squeaky-pl/portable-pypy">Portable PyPy</a>:
+portable 32 and 64 bit x86 PyPy binaries.</p></li><li><p><a href="http://www.openmole.org/documentation/console/task">OpenMOLE</a>:
+execute programs on distributed computing environments.</p></li><li><p><a href="http://compilation.gforge.inria.fr/2013_12_Dammarie/pdf/17-Francois_DeFerriere.pdf">ATOS</a>:
+find automatically C/C++ compiler options that provide best
+optimizations.</p></li><li><p><a href="https://forge.ocamlcore.org/projects/opam2debian">OPAM2Debian</a>:
+create Debian packages which contains a fully compiled OPAM
+installation.</p></li><li><p><a href="http://sioworkers.readthedocs.org/en/latest">SIO Workers</a>:
+batch long-term computations with Python.</p></li></ul></div><div class="section" id="third\ party\ packages"><h3>Third party packages</h3><p>Binaries from the <a href="#downloads">Downloads</a> section are likely more up-to-date.</p><ul><li><p><a href="https://aur.archlinux.org/packages/proot/">Arch Linux (PRoot)</a></p></li><li><p><a href="https://aur.archlinux.org/packages/care-static">Arch Linux (CARE)</a></p></li><li><p><a href="http://packages.gentoo.org/package/sys-apps/proot">Gentoo</a></p></li><li><p><a href="https://packages.debian.org/sid/proot">Debian</a></p></li><li><p><a href="https://launchpad.net/ubuntu/+source/proot">Ubuntu</a></p></li><li><p><a href="https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot">NixOS</a></p></li><li><p><a href="https://github.com/KaOS-Community-Packages/proot">KaOS</a></p></li><li><p><a href="https://rcc.uchicago.edu/docs/software/modules/proot/current.html">University of Chicago RCC</a></p></li></ul></div><div class="section" id="public\ material\ about\ proot\ or\ care"><h3>Public material about PRoot or CARE</h3><ul><li><p>articles on <a href="http://ivoire.dinauz.org/blog/tag/PRoot">Rémi's blog</a>.  Rémi (a.k.a Ivoire)
+is one of the PRoot developers.</p></li><li><p>presentation "<a href="https://archive.fosdem.org/2014/schedule/event/syscall">Software engineering tools based on syscall
+instrumentation</a>" during
+FOSDEM 2014.</p></li><li><p>presentation "<a href="https://lcu14.zerista.com/event/member/137797">SW testing &amp; Reproducing a LAVA failures locally
+using CARE</a>"
+during Linaro Connect USA 2014</p></li><li><p>presentation and essay "<a href="http://c-mind.org/events/trust2014/presentations/trust14_care.pdf">CARE: the Comprehensive Archiver for
+Reproducible Execution</a>"
+(<a href="http://dl.acm.org/citation.cfm?doid=2618137.2618138">essay</a>)
+during TRUST 2014</p></li><li><p>presentation "<a href="http://www.hipeac.net/system/files/bertin_care_comprehensive_archiving_for_reproducible_execution.pdf">An Introduction to the CARE tool</a>"
+during HiPEAC CSW 2013</p></li><li><p>presentation and essay "<a href="http://adt.cs.upb.de/quf/quf11/quf2011_13.pdf">PRoot: a Step Forward for QEMU User-Mode</a>" (<a href="http://adt.cs.upb.de/quf/quf2011_proceedings.pdf">proceedings</a>) during
+QUF'11</p></li><li><p>tutorial "<a href="https://nixos.org/wiki/How_to_install_nix_in_home_%28on_another_distribution%29#PRoot_Installation">How to install nix in home (on another distribution)</a>"</p></li></ul></div><div class="section" id="companies\ using\ proot\ or\ care\ internally"><h3>Companies using PRoot or CARE internally</h3><ul><li><p>STMicroelectronics (main sponsor)</p></li><li><p>Sony</p></li><li><p>Ericsson</p></li><li><p>Cisco</p></li><li><p>Gogo</p></li></ul></div></div><div class="section" id="support"><h2>Support</h2><p>Feel free to send your questions, bug reports,
+	    suggestions, and patchs to <a href="mailto:proot_me@googlegroups.com">the
+	    mailing-list</a> or to <a href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
+	    forum</a>, but please be sure that your answer isn't in
+	    the <a href="https://github.com/cedric-vincent/PRoot#proot">user
+	    manual</a> first.
+	    </p></div><script type="text/javascript">
+	    (function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+	    po.src = 'https://apis.google.com/js/plusone.js';
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	    })();
+	  </script></body></html>
