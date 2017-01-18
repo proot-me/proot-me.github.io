@@ -7,7 +7,7 @@ root filesystem, making files accessible somewhere else in the
 filesystem hierarchy, or executing programs built for another CPU
 architecture transparently through QEMU user-mode.  Also, developers
 can use PRoot as a generic Linux process instrumentation engine thanks
-to its extension mechanism, see <a href="http://reproducible.io">CARE</a> for an example.  Technically
+to its extension mechanism, see <a href="https://proot-me.github.io">CARE</a> for an example.  Technically
 PRoot relies on <tt>ptrace</tt>, an unprivileged system-call available in
 every Linux kernel.</p><p>The new root file-system, a.k.a <em>guest rootfs</em>, typically contains a
 Linux distribution.  By default PRoot confines the execution of
@@ -178,7 +178,7 @@ downloaded.  Note that <tt>mknod</tt> errors reported by <tt>tar</tt> when
 extracting these archives can be safely ignored since special files
 are typically bound (see <tt>-R</tt> option for details).</p><ul><li><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p><a href="https://images.linuxcontainers.org/images/">https://images.linuxcontainers.org/images/</a></p></li><li><p><a href="http://distfiles.gentoo.org/releases/">http://distfiles.gentoo.org/releases/</a></p></li><li><p><a href="http://cdimage.ubuntu.com/ubuntu-core/releases/">http://cdimage.ubuntu.com/ubuntu-core/releases/</a></p></li><li><p><a href="http://archlinuxarm.org/developers/downloads">http://archlinuxarm.org/developers/downloads</a></p></li></ul><p>Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution:</p><pre>tar --one-file-system --create --gzip --file my_rootfs.tar.gz /</pre></div></div><div xmlns="" class="section" id="ecosystem"><h2>Ecosystem</h2><p>The following ecosystem has developed around PRoot since it has been
-made publicly available.</p><div class="section" id="projects\ using\ proot\ or\ care"><h3>Projects using PRoot or CARE</h3><ul><li><p><a href="http://reproducible.io">CARE</a>: archive material used during an execution to make it
+made publicly available.</p><div class="section" id="projects\ using\ proot\ or\ care"><h3>Projects using PRoot or CARE</h3><ul><li><p><a href="https://proot-me.github.io">CARE</a>: archive material used during an execution to make it
 reproducible on any Linux system.</p></li><li><p><a href="https://play.google.com/store/apps/details?id=champion.gnuroot">GNURoot</a>:
 use several Linux distros on Android without root access.</p></li><li><p><a href="https://play.google.com/store/apps/details?id=com.cuntubuntu">Debian noroot</a>:
 use Debian Linux on Android without root access.</p></li><li><p><a href="https://github.com/polysquare/polysquare-travis-container">Polysquare Travis Container</a>:
