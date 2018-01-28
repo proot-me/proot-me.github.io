@@ -167,13 +167,8 @@ Built for x86_64-slackware-linux-gnu</pre><p>It's worth mentioning that even whe
 host programs and the emulated execution of guest programs, they still
 believe they are running in a native guest environment.  As a
 demonstration, here is a partial output of a typical <tt>./configure</tt>
-script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div xmlns="" class="section" id="downloads"><h2>Downloads</h2><div class="section" id=""><h3>PRoot</h3><p>The latest release of PRoot is packaged on <a href="http://packages.proot.me">http://packages.proot.me</a>
-and sources are hosted on <a href="http://scm.proot.me">http://scm.proot.me</a>.  It is also available
-as highly compatible static binaries:</p><ul><li><p>for x86_64: <a href="http://portable.proot.me/proot-x86_64">http://portable.proot.me/proot-x86_64</a></p></li><li><p>for x86: <a href="http://portable.proot.me/proot-x86">http://portable.proot.me/proot-x86</a></p></li><li><p>for ARM: <a href="http://portable.proot.me/proot-arm">http://portable.proot.me/proot-arm</a></p></li><li><p>other architectures: on demand.</p></li></ul><p>Such binaries are created using the following build-system:
-<a href="http://build.proot.me">http://build.proot.me</a>.  It makes sure that they can run on any distros
-powered by the Linux kernel version 2.6.0 or later, nothing more.
-Ultimately these binaries can even run on Linux systems where no
-libraries are installed.</p></div><div class="section" id="rootfs"><h3>Rootfs</h3><p>Here follows a couple of URLs where some rootfs archives can be freely
+script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div xmlns="" class="section" id="downloads"><h2>Downloads</h2><div class="section" id=""><h3>PRoot</h3><p>The sources are available on <a href="https://github.com/proot-me/PRoot">https://github.com/proot-me/PRoot</a>.
+</div><div class="section" id="rootfs"><h3>Rootfs</h3><p>Here follows a couple of URLs where some rootfs archives can be freely
 downloaded.  Note that <tt>mknod</tt> errors reported by <tt>tar</tt> when
 extracting these archives can be safely ignored since special files
 are typically bound (see <tt>-R</tt> option for details).</p><ul><li><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p><a href="https://images.linuxcontainers.org/images/">https://images.linuxcontainers.org/images/</a></p></li><li><p><a href="http://distfiles.gentoo.org/releases/">http://distfiles.gentoo.org/releases/</a></p></li><li><p><a href="http://cdimage.ubuntu.com/ubuntu-core/releases/">http://cdimage.ubuntu.com/ubuntu-core/releases/</a></p></li><li><p><a href="http://archlinuxarm.org/developers/downloads">http://archlinuxarm.org/developers/downloads</a></p></li></ul><p>Technically such rootfs archive can be created by running the
