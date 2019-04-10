@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>CARE — Comprehensive Archiver for Reproducible Execution</title><link rel="stylesheet" href="care.css" type="text/css"/><meta itemprop="name" content="CARE"/><meta itemprop="description" content="CARE monitors the execution of the specified command to create an&#10;archive that contains all the material required to re-execute it&#10;in the same context.  That way, the command will be reproducible&#10;everywhere, even on Linux systems that are supposed to be not&#10;compatible with the original Linux system.  CARE is typically useful&#10;to get reliable bug reports, demonstrations, artifact evaluation,&#10;tutorials, portable applications, minimal rootfs, file-system&#10;coverage, ..."/><script type="text/javascript">
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-46144158-1', 'reproducible.io');
+	  ga('send', 'pageview');
+	</script></head><body><div id="title"><h1>CARE</h1> </div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#example">Example</a></li><li><a href="#downloads">Downloads</a></li><li><a href="#support">Support</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>CARE monitors the execution of the specified command to create an
+<em>archive</em> that contains all the material required to <em>re-execute</em> it
+in the same context.  That way, the command will be reproducible
+everywhere, even on Linux systems that are supposed to be not
+compatible with the original Linux system.  CARE is typically useful
+to get reliable bug reports, demonstrations, <a href="http://www.artifact-eval.org/">artifact evaluation</a>,
+tutorials, portable applications, minimal rootfs, file-system
+coverage, ...</p><p>By design, CARE does not record events at all.  Instead, it archives
+environment variables and accessed file-system components -- before
+modification -- during the so-called <em>initial</em> execution.  Then, to
+reproduce this execution, the <tt>re-execute.sh</tt> script embedded into
+the archive restores the environment variables and relaunches the
+command confined into the saved file-system.  That way, both <em>initial</em>
+and <em>reproduced</em> executions should produce the same results as they
+use the same context, assuming they do not rely on external events --
+like key strokes or network packets -- or that these external events
+are replayed manually or automatically, using <a href="https://github.com/martinpitt/umockdev/">umockdev</a> for instance.
+That means it is possible to alter explicitly the reproduced
+executions by changing content of the saved file-system, or by
+replaying different external events.</p><div class="section" id="privacy"><h3>Privacy</h3><p>To ensure that no sensitive file can possibly leak into the archive,
+CARE <em>conceals</em> recursively the content of <tt>$HOME</tt> and <tt>/tmp</tt>,
+that is, they appear empty during the original execution.  Although,
+for consistency reasons, the content of <tt>$PWD</tt> is <em>revealed</em> even if
+it is nested into the two previous paths.</p><p>As a consequence, a program executed under CARE may behave
+unexpectedly because a required path is not accessible anymore.  In
+this case, such a path has to be revealed explicitly.  For details,
+see the options <tt>--concealed-path</tt> and <tt>--revealed-path</tt>, and the
+file <tt>concealed-accesses.txt</tt> as well.</p><p>It is advised to inspect the archived content before sharing it.</p></div></div><div xmlns="" class="section" id="example"><h2>Example</h2><p>In this example, Alice wants to report to Bob that the compilation of
+PRoot v2.4 raises an unexpected warning:</p><pre>alice$ make -C PRoot-2.4/src/
+
+make: Entering directory `PRoot-2.4/src'
+[...]
+CC    path/proc.o
+./path/proc.c: In function 'readlink_proc':
+./path/proc.c:132:3: warning: ignoring return value of 'strtol'
+[...]</pre><p>Technically, Alice uses Ubuntu 11.04 for x86, whereas Bob uses
+Slackware 13.37 on x86_64.  Both distros are supposed to be shipped
+with GCC 4.5.2, however Bob is not able to reproduce this issue on his
+system:</p><pre>bob$ make -C PRoot-2.4/src/
+
+make: Entering directory `PRoot-2.4/src'
+[...]
+CC    path/proc.o
+[...]</pre><p>Since they don't have much time to investigate this issue by iterating
+between each other, they decide to use CARE.  First, Alice prepends
+<tt>care</tt> to her command:</p><pre>alice$ care make -C PRoot-2.4/src/
+
+care info: concealed path: $HOME
+care info: concealed path: /tmp
+care info: revealed path: $PWD
+care info: ----------------------------------------------------------------------
+make: Entering directory `PRoot-2.4/src'
+[...]
+CC    path/proc.o
+./path/proc.c: In function 'readlink_proc':
+./path/proc.c:132:3: warning: ignoring return value of 'strtol'
+[...]
+care info: ----------------------------------------------------------------------
+care info: Hints:
+care info:   - search for "conceal" in `care -h` if the execution didn't go as expected.
+care info:   - use `./care-130213072430.bin` to extract the output archive.</pre><p>Then she sends the <tt>care-130213072430.bin</tt> file to Bob.  Now, he
+should be able to reproduce her issue on his system:</p><pre>bob$ ./care-130213072430.bin
+[...]
+bob$ ./care-130213072430/re-execute.sh
+
+make: Entering directory `PRoot-2.4/src'
+[...]
+CC    path/proc.o
+./path/proc.c: In function 'readlink_proc':
+./path/proc.c:132:3: warning: ignoring return value of 'strtol'
+[...]</pre><p>So far so good!  This compiler warning doesn't make sense to Bob since
+<tt>strtol</tt> is used there to check a string format; the return value is
+useless, only the <tt>errno</tt> value matters.  Further investigations are
+required, so Bob re-execute Alice's GCC differently to get more
+details:</p><pre>bob$ ./care-130213072430/re-execute.sh gcc --version
+
+gcc (Ubuntu/Linaro 4.5.2-8ubuntu4) 4.5.2
+Copyright (C) 2010 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</pre><p>The same invocation on his system returns something slightly
+different:</p><pre>bob$ gcc --version
+
+gcc (GCC) 4.5.2
+Copyright (C) 2010 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.</pre><p>This confirms that both GCC versions are the same, however Alice's one
+seems to have been modified by Ubuntu.  Although, according to the web
+page related to this Ubuntu package 
+    [1]
+  , no changes regarding
+<tt>strtol</tt> were made.  So Bob decides to search into the files coming
+from Alice's system, that is, the <tt>rootfs</tt> directory in the
+archive:</p><pre>bob$ grep -wIrl strtol ./care-130213072430/rootfs
+
+care-130213072430/rootfs/usr/include/inttypes.h
+care-130213072430/rootfs/usr/include/stdlib.h
+[...]</pre><p>Here, the file <tt>usr/include/stdlib.h</tt> contains a declaration of
+<tt>strtol</tt> with the "warn unused result" attribute.  On Ubuntu, this
+file belongs to the EGLIBC package, and its related web page 
+    [2]
+  
+shows that this attribute was actually wrongly introduced by the
+official EGLIBC developers.  Ultimately Bob should notify them in this
+regard.</p><p>Thanks to CARE, Bob was able to reproduce the issue reported by Alice
+without effort.  For investigations purpose, he was able to re-execute
+programs differently and to search into the relevant files.</p><p>
+    [1]
+  <a href="https://launchpad.net/ubuntu/oneiric/+source/gcc-4.5/4.5.2-8ubuntu4">https://launchpad.net/ubuntu/oneiric/+source/gcc-4.5/4.5.2-8ubuntu4</a></p><p>
+    [2]
+  <a href="https://launchpad.net/ubuntu/+source/eglibc/2.13-0ubuntu13.2">https://launchpad.net/ubuntu/+source/eglibc/2.13-0ubuntu13.2</a></p></div><div xmlns="" class="section" id="downloads"><h2>Downloads</h2><p>CARE is heavily based on <a href="https://proot-me.github.io">PRoot</a>, that's why they are both hosted in
+the same repository: <a href="https://github.com/proot-me/proot">https://github.com/proot-me/proot</a>.  Since CARE is supposed
+to work on any Linux systems, it is recommended to use following
+highly compatible static binaries:</p><ul><li><p>for x86_64: <a href="https://github.com/proot-me/proot-static-build/raw/master/static/care-x86_64">https://github.com/proot-me/proot-static-build/raw/master/static/care-x86_64</a></p></li><li><p>for x86: <a href="https://github.com/proot-me/proot-static-build/raw/master/static/care-x86">https://github.com/proot-me/proot-static-build/raw/master/static/care-x86</a></p></li><li><p>for ARM: <a href="https://github.com/proot-me/proot-static-build/raw/master/static/care-arm">https://github.com/proot-me/proot-static-build/raw/master/static/care-arm</a></p></li><li><p>other architectures: on demand.</p></li></ul></div><div class="section" id="support"><h2>Support</h2><p>Feel free to send your questions, bug reports,
+	    suggestions, and patches to <a href="mailto:proot_me@googlegroups.com">the
+	    mailing-list</a> or to <a href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
+	    forum</a>, or chat with us on <a href="https://gitter.im/proot-me/devs">Gitter</a>;
+            but please be sure that your answer isn't in the
+            <a href="https://raw.githubusercontent.com/proot-me/proot/master/doc/care/manual.txt">user
+	    manual</a> first.
+	    </p></div><script type="text/javascript">
+	    (function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+	    po.src = 'https://apis.google.com/js/plusone.js';
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	    })();
+	  </script></body></html>
