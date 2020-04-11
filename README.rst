@@ -6,17 +6,17 @@ PRoot
 Build status
 ============
 
-- .. image:: https://img.shields.io/gitlab/pipeline/proot/proot.svg?label=gitlab-ci&style=flat-square
-     :target: https://gitlab.com/proot/proot/pipelines
+.. image:: https://img.shields.io/gitlab/pipeline/proot/proot.svg?label=gitlab-ci&style=flat-square
+   :target: https://gitlab.com/proot/proot/pipelines
 
-- .. image:: https://img.shields.io/travis/proot-me/proot.svg?label=travis-ci&style=flat-square
-     :target: https://travis-ci.org/proot-me/proot
+.. image:: https://img.shields.io/travis/proot-me/proot.svg?label=travis-ci&style=flat-square
+   :target: https://travis-ci.org/proot-me/proot
 
-- .. image:: https://img.shields.io/badge/scan--build-latest-yellow.svg?style=flat-square
-     :target: https://proot.gitlab.io/proot/reports/scan-build
+.. image:: https://img.shields.io/badge/scan--build-latest-yellow.svg?style=flat-square
+   :target: https://proot.gitlab.io/proot/reports/scan-build
 
-- .. image:: https://img.shields.io/badge/lcov-latest-6688D4.svg?style=flat-square
-     :target: https://proot.gitlab.io/proot/reports/lcov
+.. image:: https://img.shields.io/badge/lcov-latest-6688D4.svg?style=flat-square
+   :target: https://proot.gitlab.io/proot/reports/lcov
 
 Compiling
 =========
@@ -26,6 +26,11 @@ The following commands can be used to compile PRoot and CARE::
     make -C src loader.elf loader-m32.elf build.h # first build the config and loader
     make -C src proot care # then compile PRoot and CARE
     make -C test # run test suite
+
+|asciicast|
+
+.. |asciicast| image:: https://asciinema.org/a/315367.svg
+   :target: https://asciinema.org/a/315367
 
 Dependencies
 ============
